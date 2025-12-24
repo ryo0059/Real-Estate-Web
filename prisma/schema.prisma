@@ -1,0 +1,77 @@
+// 📂 prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. Tabel Utama Properti
+model Property {
+  id            Int      @id @default(autoincrement())
+  slug          String   @unique // Untuk URL cantik (contoh: /property/rumah-mewah-bali)
+  title         String
+  description   String   @db.Text // @db.Text agar bisa menampung teks panjang
+  price         Decimal  @db.Decimal(15, 2) // Gunakan Decimal untuk uang agar presisi
+  location      String
+  
+  // Spesifikasi
+  bedrooms      Int
+  bathrooms     Int
+  buildingArea  Int      // Luas Bangunan (m2)
+  landArea      Int      // Luas Tanah (m2)
+  certificate   String?  @default("SHM") // SHM, HGB, dll.
+
+  // Relasi (Satu properti punya banyak...)
+  images        Image[]
+  facilities    Facility[]
+  visits        VisitRequest[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// 2. Tabel Gambar (Agar 1 properti bisa punya banyak foto)
+model Image {
+  id          Int      @id @default(autoincrement())
+  url         String
+  propertyId  Int
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+}
+
+// 3. Tabel Fasilitas Sekitar (Untuk fitur Neighborhood)
+model Facility {
+  id          Int      @id @default(autoincrement())
+  name        String   // Contoh: "Mall Grand Indonesia"
+  type        String   // school, shopping, hospital, cafe, transport
+  distance    String   // Contoh: "500m" atau "2 km"
+  
+  propertyId  Int
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+}
+
+// 4. Tabel Jadwal Kunjungan (Menyimpan data orang yang isi form)
+model VisitRequest {
+  id          Int      @id @default(autoincrement())
+  visitorName String
+  visitorPhone String
+  visitDate   DateTime
+  visitTime   String   // "09:00", "13:00"
+  status      VisitStatus @default(PENDING)
+  
+  propertyId  Int
+  property    Property @relation(fields: [propertyId], references: [id])
+  
+  createdAt   DateTime @default(now())
+}
+
+// Enum untuk status kunjungan
+enum VisitStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
